@@ -1,0 +1,13 @@
+# 农业杂草检测数据集
+path: D:/桌面/agri_weed_project/output/yolo_dataset
+train: images/train
+val: images/val
+test: images/test
+
+nc: 5
+names: ['rice', 'barnyard_grass', 'monochoria', 'lobelia', 'other_weed']
+
+# 多模态配置
+meta_path: meta
+meta_dim: 7
+crop_type: RICE
