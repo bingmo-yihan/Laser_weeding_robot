@@ -1,5 +1,9 @@
 {
-  "dependencies": {
-    "mysql2": "^3.9.0"
-  }
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "api/submit.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
