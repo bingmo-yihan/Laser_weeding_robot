@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>智农激光 | 智能激光除草机器人 · 精准农业AI装备</title>
+    <meta name="description" content="基于贝叶斯优化的多模态感知与动态能量调控的智能激光除草机器人，AI视觉识别，零农药，高效无人化作业，降本增效。">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2327ae60' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z'/%3E%3Cpath d='M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12'/%3E%3C/svg%3E">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+        @layer base {
+            :root {
+                --wheat: #f4d03f;
+                --field-green: #27ae60;
+                --soil: #8b4513;
+                --sky: #87ceeb;
+                --cream: #faf9f6;
+            }
+            html { scroll-behavior: smooth; }
+            body {
+                font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+                background: linear-gradient(135deg, #faf9f6 0%, #f0f7f4 100%);
+                color: #1e2f3e;
+                overflow-x: hidden;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                html { scroll-behavior: auto; }
+                .scroll-reveal { transition: none !important; }
+            }
+        }
+        @layer components {
+            .gradient-text {
+                background: linear-gradient(135deg, #27ae60 0%, #1e6f5c 50%, #2c3e66 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            .glass-card {
+                background: rgba(255, 255, 255, 0.92);
+                backdrop-filter: blur(16px);
+                border: 1px solid rgba(39, 174, 96, 0.2);
+                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+            .glass-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.12);
+                border-color: rgba(39, 174, 96, 0.4);
+            }
+            .field-pattern {
+                background-image:
+                    repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(39, 174, 96, 0.02) 50px, rgba(39, 174, 96, 0.02) 51px),
+                    repeating-linear-gradient(0deg, transparent, transparent 50px, rgba(39, 174, 96, 0.02) 50px, rgba(39, 174, 96, 0.02) 51px);
+            }
+            .leaf-icon {
+                background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            }
+            .scroll-reveal {
+                opacity: 0;
+                transform: translateY(30px);
+                transition: all 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+            }
+            .scroll-reveal.active {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            .laser-beam {
+                background: linear-gradient(90deg, transparent, #e74c3c, #f39c12, transparent);
+                height: 3px;
+                box-shadow: 0 0 12px #e74c3c, 0 0 20px #f39c12;
+                animation: laser-pulse 2s ease-in-out infinite;
+            }
+            @keyframes laser-pulse {
+                0%, 100% { opacity: 0.5; width: 2px; }
+                50% { opacity: 1; width: 4px; }
+            }
+            .float-anim {
+                animation: float 6s ease-in-out infinite;
+            }
+            @keyframes float {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-8px); }
+            }
+            .btn-primary {
+                background: linear-gradient(105deg, #27ae60 0%, #1e8449 100%);
+                transition: all 0.25s ease;
+            }
+            .btn-primary:hover {
+                transform: scale(1.02);
+                box-shadow: 0 12px 22px -10px #27ae60;
+                filter: brightness(1.02);
+            }
+            .form-input-custom {
+                transition: all 0.2s;
+                border: 1px solid #e2e8f0;
+                background: #ffffff;
+            }
+            .form-input-custom:focus {
+                border-color: #27ae60;
+                box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.15);
+                outline: none;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased field-pattern">
+    <!-- 导航栏 -->
+    <nav id="navbar" class="fixed top-0 w-full z-50 transition-all duration-300 bg-white/85 backdrop-blur-md border-b border-green-100/60 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-2">
+                    <div class="w-10 h-10 rounded-xl leaf-icon flex items-center justify-center shadow-md">
+                        <i data-lucide="sprout" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-xl text-gray-800 tracking-tight">智农激光</span>
+                        <span class="text-xs text-green-700 block -mt-1 font-medium">AI Laser Weeding</span>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-6 xl:space-x-7">
+                    <a href="#overview" class="text-sm font-medium text-gray-600 hover:text-green-700 transition-colors">项目概况</a>
+                    <a href="#innovation" class="text-sm font-medium text-gray-600 hover:text-green-700 transition-colors">技术创新</a>
+                    <a href="#technology" class="text-sm font-medium text-gray-600 hover:text-green-700 transition-colors">技术方案</a>
+                    <a href="#scenarios" class="text-sm font-medium text-gray-600 hover:text-green-700 transition-colors">应用场景</a>
+                    <a href="#research" class="text-sm font-medium text-gray-600 hover:text-green-700 transition-colors">市场调研</a>
+                    <a href="#benchmark" class="text-sm font-medium text-gray-600 hover:text-green-700 transition-colors">效益对比</a>
+                    <a href="#team" class="text-sm font-medium text-gray-600 hover:text-green-700 transition-colors">项目团队</a>
+                    <a href="#contact" class="text-sm font-medium text-gray-600 hover:text-green-700 transition-colors">合作联系</a>
+                </div>
+                <button class="md:hidden text-gray-700" onclick="toggleMobileMenu()" aria-label="打开菜单">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden bg-white/95 backdrop-blur-md border-t border-green-100">
+            <div class="px-4 py-3 space-y-2">
+                <a href="#overview" class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-green-700 hover:bg-green-50 rounded-lg">项目概况</a>
+                <a href="#innovation" class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-green-700 hover:bg-green-50 rounded-lg">技术创新</a>
+                <a href="#technology" class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-green-700 hover:bg-green-50 rounded-lg">技术方案</a>
+                <a href="#scenarios" class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-green-700 hover:bg-green-50 rounded-lg">应用场景</a>
+                <a href="#research" class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-green-700 hover:bg-green-50 rounded-lg">市场调研</a>
+                <a href="#benchmark" class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-green-700 hover:bg-green-50 rounded-lg">效益对比</a>
+                <a href="#team" class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-green-700 hover:bg-green-50 rounded-lg">项目团队</a>
+                <a href="#contact" class="block px-3 py-2 text-base font-medium text-gray-700 hover:text-green-700 hover:bg-green-50 rounded-lg">合作联系</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== Hero ===== -->
+    <section class="relative min-h-screen flex items-center pt-16 overflow-hidden">
+        <div class="absolute inset-0 overflow-hidden">
+            <div class="absolute top-20 right-0 w-96 h-96 bg-green-200/30 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 w-72 h-72 bg-yellow-100/40 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 right-0 h-32 crop-row opacity-40"></div>
+        </div>
+        <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div class="text-left">
+                    <div class="inline-flex items-center px-4 py-2 rounded-full bg-green-100 text-green-800 text-sm font-medium mb-6 float-anim shadow-sm">
+                        <i data-lucide="award" class="w-4 h-4 mr-2"></i>
+                        河南省大学生创新训练项目 · 202612746029
+                    </div>
+                    <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight text-gray-900">
+                        智能激光除草<br>
+                        <span class="gradient-text">AI精准识别 · 零农药高效作业</span>
+                    </h1>
+                    <p class="text-lg text-gray-600 mb-8 leading-relaxed max-w-xl">
+                        融合贝叶斯优化YOLOv8 + 动态能量调控，实现毫米级精准打击。<br>
+                        <strong class="text-green-700">无人化作业 · 降本增效 · 守护土壤健康</strong> —— 重新定义智慧除草。
+                    </p>
+                    <div class="flex flex-wrap gap-4 mb-8">
+                        <div class="flex items-center gap-2 text-sm text-gray-700 bg-white/80 px-4 py-2 rounded-full shadow-sm border border-green-200">
+                            <i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>
+                            识别准确率 ≥98.2%
+                        </div>
+                        <div class="flex items-center gap-2 text-sm text-gray-700 bg-white/80 px-4 py-2 rounded-full shadow-sm border border-green-200">
+                            <i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>
+                            零化学农药 · 作物误伤率＜1%
+                        </div>
+                        <div class="flex items-center gap-2 text-sm text-gray-700 bg-white/80 px-4 py-2 rounded-full shadow-sm border border-green-200">
+                            <i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>
+                            嵌入式实时推理 ≥25FPS
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="#technology" class="px-8 py-4 btn-primary text-white rounded-full font-semibold shadow-lg shadow-green-500/20 hover:shadow-xl transition-all flex items-center justify-center gap-2">
+                            <i data-lucide="cpu" class="w-5 h-5"></i>
+                            探索AI核心技术
+                        </a>
+                        <a href="#contact" class="px-8 py-4 bg-white text-gray-800 border border-gray-300 rounded-full font-semibold hover:border-green-500 hover:text-green-700 transition-all flex items-center justify-center gap-2 shadow-sm">
+                            <i data-lucide="phone-call" class="w-5 h-5"></i>
+                            商务合作
+                        </a>
+                    </div>
+                </div>
+                <div class="relative hidden lg:block">
+                    <div class="relative w-full aspect-square max-w-lg mx-auto">
+                        <div class="absolute inset-0 bg-gradient-to-br from-green-100 to-blue-50 rounded-3xl transform rotate-2 shadow-xl"></div>
+                        <img src="assets/robot-prototype.png" alt="第一代激光除草机器人原型" class="absolute inset-0 w-full h-full object-cover rounded-3xl shadow-2xl border border-green-100">
+                        <div class="absolute -top-4 -right-4 w-24 h-24 bg-yellow-100/90 rounded-2xl flex items-center justify-center shadow-lg float-anim">
+                            <i data-lucide="sun" class="w-12 h-12 text-yellow-600"></i>
+                        </div>
+                        <div class="absolute -bottom-4 -left-4 w-24 h-24 bg-blue-100/90 rounded-2xl flex items-center justify-center shadow-lg float-anim" style="animation-delay: 1s;">
+                            <i data-lucide="droplets" class="w-12 h-12 text-blue-600"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-16 grid grid-cols-2 md:grid-cols-4 gap-5">
+                <div class="glass-card rounded-2xl p-6 text-center border-t-4 border-green-500">
+                    <div class="text-3xl font-bold text-green-700 mb-1">98.2%</div>
+                    <div class="text-sm text-gray-600">作物杂草识别准确率</div>
+                </div>
+                <div class="glass-card rounded-2xl p-6 text-center border-t-4 border-blue-500">
+                    <div class="text-3xl font-bold text-blue-700 mb-1">≥25</div>
+                    <div class="text-sm text-gray-600">嵌入式推理FPS</div>
+                </div>
+                <div class="glass-card rounded-2xl p-6 text-center border-t-4 border-purple-500">
+                    <div class="text-3xl font-bold text-purple-700 mb-1">94%</div>
+                    <div class="text-sm text-gray-600">生长点打击命中率</div>
+                </div>
+                <div class="glass-card rounded-2xl p-6 text-center border-t-4 border-amber-500">
+                    <div class="text-3xl font-bold text-amber-700 mb-1">&lt;1%</div>
+                    <div class="text-sm text-gray-600">作物误伤率</div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ===== 项目概况 ===== -->
+    <section id="overview" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="scroll-reveal">
+                <div class="text-center mb-12">
+                    <span class="inline-block px-4 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium mb-4">项目价值</span>
+                    <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">为什么选择激光除草机器人？</h2>
+                    <p class="text-gray-600 max-w-2xl mx-auto">AI视觉 + 精准激光技术，从根本上解决化学残留与人工痛点，助农降本增效</p>
+                </div>
+                <div class="grid md:grid-cols-3 gap-8 mb-12">
+                    <div class="glass-card rounded-2xl p-8 text-center group hover:shadow-xl transition-all">
+                        <div class="w-16 h-16 mx-auto rounded-2xl bg-red-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i data-lucide="ban" class="w-8 h-8 text-red-600"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">杜绝农药残留</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">零化学品介入，不伤土壤与水体。调研显示连续使用化学除草剂3年以上，土壤板结可致小麦、玉米亩产下降8%—12%，激光除草从源头避免这一问题。</p>
+                    </div>
+                    <div class="glass-card rounded-2xl p-8 text-center group hover:shadow-xl transition-all">
+                        <div class="w-16 h-16 mx-auto rounded-2xl bg-orange-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i data-lucide="clock" class="w-8 h-8 text-orange-600"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">解决人工痛点</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">人工除草效率仅为0.5—3亩/人/天，农忙期劳动力缺口超过30%。机器人无人化自主作业，毫米级靶向灭杀，让农户从繁重巡田除草中解放出来。</p>
+                    </div>
+                    <div class="glass-card rounded-2xl p-8 text-center group hover:shadow-xl transition-all">
+                        <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i data-lucide="leaf" class="w-8 h-8 text-emerald-600"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">绿色可持续</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">响应国家农业绿色转型战略，避免除草剂残留引发的土壤酸化、盐渍化与板结，为作物生长营造无农药干扰的优势生态位，符合碳中和导向。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 政策背景 -->
+            <div class="scroll-reveal mt-16">
+                <div class="grid lg:grid-cols-3 gap-8">
+                    <div class="glass-card rounded-2xl p-8 border-t-4 border-green-500">
+                        <div class="flex items-center gap-3 mb-4">
+                            <i data-lucide="landmark" class="w-7 h-7 text-green-600"></i>
+                            <h3 class="text-xl font-bold">国家顶层规划</h3>
+                        </div>
+                        <p class="text-gray-600 text-sm leading-relaxed">中共中央、国务院《加快建设农业强国规划（2024—2035年）》（2025年4月发布）将"绿色低碳"作为农业强国建设核心底色，明确支持高端智能绿色农机研发与全链条应用。</p>
+                    </div>
+                    <div class="glass-card rounded-2xl p-8 border-t-4 border-blue-500">
+                        <div class="flex items-center gap-3 mb-4">
+                            <i data-lucide="file-text" class="w-7 h-7 text-blue-600"></i>
+                            <h3 class="text-xl font-bold">部门专项部署</h3>
+                        </div>
+                        <p class="text-gray-600 text-sm leading-relaxed">《农业农村部关于加快农业发展全面绿色转型促进乡村生态振兴的指导意见》（农规发〔2024〕27号）提出到2030年主要农作物绿色防控覆盖率达60%以上，将物理防控纳入统防统治核心内容。</p>
+                    </div>
+                    <div class="glass-card rounded-2xl p-8 border-t-4 border-purple-500">
+                        <div class="flex items-center gap-3 mb-4">
+                            <i data-lucide="rocket" class="w-7 h-7 text-purple-600"></i>
+                            <h3 class="text-xl font-bold">农机补贴导向</h3>
+                        </div>
+                        <p class="text-gray-600 text-sm leading-relaxed">《"十五五"全国农业机械化发展规划（2026—2030）》提出实施"优机优补"，将智能、新能源农机补贴比例提高至35%，并把丘陵山区适用小型智能农机研发列为重点任务。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 已有基础 -->
+            <div class="scroll-reveal mt-16">
+                <div class="glass-card rounded-3xl p-8 md:p-10">
+                    <div class="grid lg:grid-cols-2 gap-10 items-center">
+                        <div>
+                            <span class="inline-block px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium mb-4">已有基础</span>
+                            <h3 class="text-2xl md:text-3xl font-bold text-gray-900 mb-4">第一代激光除草机器人原型</h3>
+                            <p class="text-gray-600 mb-6">团队已完成初代机器人硬件原型全功能设计与核心性能验证，并打通"开机自检→环境感知→路径规划→杂草识别→激光打击→作业反馈"完整作业链路，通过实验室环境基础运行验证。</p>
+                            <ul class="space-y-3">
+                                <li class="flex items-start gap-3"><i data-lucide="scan" class="w-5 h-5 text-green-600 mt-0.5 shrink-0"></i><span class="text-sm text-gray-700">多传感器融合感知：激光雷达 + 深度相机 + 蚁群/模拟退火算法，精准感知杂草分布与地形起伏</span></li>
+                                <li class="flex items-start gap-3"><i data-lucide="navigation" class="w-5 h-5 text-green-600 mt-0.5 shrink-0"></i><span class="text-sm text-gray-700">基于Autoware的自动驾驶：保障直线行驶、转向避障稳定</span></li>
+                                <li class="flex items-start gap-3"><i data-lucide="zap" class="w-5 h-5 text-green-600 mt-0.5 shrink-0"></i><span class="text-sm text-gray-700">激光功率毫秒级调控：声光抑制器 + 模拟退火算法协同，激光能量快速响应、精准匹配</span></li>
+                                <li class="flex items-start gap-3"><i data-lucide="weight" class="w-5 h-5 text-green-600 mt-0.5 shrink-0"></i><span class="text-sm text-gray-700">结构优化减重：热力耦合仿真 + 自适应网格划分，整机减重15%</span></li>
+                            </ul>
+                        </div>
+                        <div class="relative">
+                            <div class="rounded-2xl overflow-hidden shadow-xl border border-green-100">
+                                <img src="assets/robot-prototype.png" alt="第一代激光除草机器人硬件原型" class="w-full h-auto object-cover">
+                            </div>
+                            <div class="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-5 py-2 rounded-full shadow-md border border-green-200 text-sm text-green-700 font-medium whitespace-nowrap">
+                                初代样机 · 实验室验证通过
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ===== 技术创新 ===== -->
+    <section id="innovation" class="py-20 bg-gradient-to-b from-green-50/50 to-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="scroll-reveal text-center mb-12">
+                <span class="inline-block px-4 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium mb-4">核心技术</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900">三大技术创新</h2>
+                <p class="text-gray-600 mt-2">融合人工智能、光学工程与农业科学，打造新一代智能除草系统</p>
+            </div>
+            <div class="space-y-8">
+                <div class="glass-card rounded-3xl p-8 md:p-12 border-l-4 border-green-500">
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium mb-4"><span class="w-2 h-2 rounded-full bg-green-500"></span>技术创新01</div>
+                            <h3 class="text-2xl md:text-3xl font-bold text-gray-900 mb-4">贝叶斯优化YOLOv8多任务感知模型</h3>
+                            <p class="text-gray-600">针对复杂农田环境杂草精准识别，将贝叶斯超参数优化引入YOLOv8框架，通过高斯过程自适应寻优，平衡精度与实时性。构建11万真实样本等效66万训练效果的数据集，覆盖玉米、小麦、花生田及14余种常见杂草。</p>
+                            <ul class="mt-4 space-y-2">
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-green-500"></i>生长点偏移量回归，亚像素级定位（误差0.3—0.8像素）</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-green-500"></i>RGB + 多光谱 + 深度信息多源融合</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-green-500"></i>轻量化后体积＜3MB，Jetson Nano推理 ≥25FPS</li>
+                            </ul>
+                        </div>
+                        <div class="bg-green-50 rounded-2xl p-6 flex flex-col justify-center">
+                            <div class="flex justify-between p-4 bg-white rounded-xl shadow-sm"><span class="text-sm">识别准确率</span><span class="font-bold text-green-700">≥98.2%</span></div>
+                            <div class="flex justify-between p-4 bg-white rounded-xl shadow-sm mt-3"><span class="text-sm">误识别率</span><span class="font-bold text-green-700">≤3%</span></div>
+                            <div class="flex justify-between p-4 bg-white rounded-xl shadow-sm mt-3"><span class="text-sm">识别响应时间</span><span class="font-bold text-green-700">≤10ms</span></div>
+                            <div class="flex justify-between p-4 bg-white rounded-xl shadow-sm mt-3"><span class="text-sm">生长点定位准确率</span><span class="font-bold text-green-700">96.5%</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-card rounded-3xl p-8 md:p-12 border-l-4 border-blue-500">
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div class="order-2 md:order-1 bg-blue-50 rounded-2xl p-6 flex flex-col justify-center">
+                            <div class="flex justify-center gap-6 mb-6">
+                                <div class="text-center"><i data-lucide="zap" class="w-10 h-10 text-blue-600 mx-auto"></i><p class="text-sm mt-2">动态能量调控</p></div>
+                                <div class="text-center"><i data-lucide="crosshair" class="w-10 h-10 text-blue-600 mx-auto"></i><p class="text-sm mt-2">同轴光路引导</p></div>
+                                <div class="text-center"><i data-lucide="database" class="w-10 h-10 text-blue-600 mx-auto"></i><p class="text-sm mt-2">三要素模型</p></div>
+                            </div>
+                            <div class="space-y-2">
+                                <div class="flex justify-between p-3 bg-white rounded-xl shadow-sm text-sm"><span>除草成功率</span><span class="font-bold text-blue-700">92%—98%</span></div>
+                                <div class="flex justify-between p-3 bg-white rounded-xl shadow-sm text-sm"><span>能量利用率提升</span><span class="font-bold text-blue-700">15%—35%</span></div>
+                                <div class="flex justify-between p-3 bg-white rounded-xl shadow-sm text-sm"><span>作物误伤率</span><span class="font-bold text-blue-700">降至1%以下</span></div>
+                            </div>
+                        </div>
+                        <div class="order-1 md:order-2">
+                            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium mb-4"><span class="w-2 h-2 rounded-full bg-blue-500"></span>技术创新02</div>
+                            <h3 class="text-2xl md:text-3xl font-bold text-gray-900 mb-4">同轴光路与动态能量调控系统</h3>
+                            <p class="text-gray-600">分光镜实现视觉—激光共轴设计，建立"杂草—环境—作物"三要素动态模型，毫秒级功率调节。针对不同根茎类型差异化施策，形成前馈—反馈闭环控制。</p>
+                            <ul class="mt-4 space-y-2">
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-blue-500"></i>须根类：高功率短照射（80W，0.5—1s）瞬时灼穿</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-blue-500"></i>直根类：中高功率持续照射（70W，1—3s）深层破坏</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-blue-500"></i>块根类：中等功率较长照射（60W，2—5s）热量内渗</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-card rounded-3xl p-8 md:p-12 border-l-4 border-purple-500">
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-sm font-medium mb-4"><span class="w-2 h-2 rounded-full bg-purple-500"></span>技术创新03</div>
+                            <h3 class="text-2xl md:text-3xl font-bold text-gray-900 mb-4">云边端协同智能管控平台</h3>
+                            <p class="text-gray-600">基于ROS2实时控制，微信小程序远程监控，云端数字孪生支持模型迭代与作业管理，形成"用户指令—机器人执行—数据反馈"完整闭环。</p>
+                            <ul class="mt-4 space-y-2">
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-purple-500"></i>小程序实时视频流，延迟≤500ms</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-purple-500"></i>云端增量训练（Django + PostgreSQL，MQTT QoS=1）</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-purple-500"></i>作业数据可视化 / 轨迹回放 / 报告自动生成</li>
+                            </ul>
+                        </div>
+                        <div class="bg-purple-50 rounded-2xl p-6 flex flex-col justify-center items-center space-y-3">
+                            <div class="flex items-center gap-4 w-full"><i data-lucide="smartphone" class="w-8 h-8 text-green-600"></i><span class="text-sm">微信小程序（交互层）</span></div>
+                            <i data-lucide="arrow-down" class="w-5 h-5 text-gray-400"></i>
+                            <div class="flex items-center gap-4 w-full"><i data-lucide="cloud" class="w-8 h-8 text-blue-600"></i><span class="text-sm">云服务器（远程层）</span></div>
+                            <i data-lucide="arrow-down" class="w-5 h-5 text-gray-400"></i>
+                            <div class="flex items-center gap-4 w-full"><i data-lucide="bot" class="w-8 h-8 text-purple-600"></i><span class="text-sm">ROS2机器人端（本地层）</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 平台界面实拍 -->
+            <div class="scroll-reveal mt-12">
+                <div class="grid md:grid-cols-2 gap-8 items-stretch">
+                    <div class="glass-card rounded-2xl p-6">
+                        <h4 class="font-bold text-gray-900 mb-3 flex items-center gap-2"><i data-lucide="smartphone" class="w-5 h-5 text-green-600"></i>微信小程序远程管控界面</h4>
+                        <p class="text-sm text-gray-500 mb-4">实时作业监控、杂草品类识别、作业进度、自主巡检、作业报告一键生成</p>
+                        <div class="rounded-xl overflow-hidden shadow-md border border-gray-100 max-w-sm mx-auto">
+                            <img src="assets/miniapp-monitor.png" alt="微信小程序远程管控平台界面" class="w-full h-auto">
+                        </div>
+                    </div>
+                    <div class="glass-card rounded-2xl p-6">
+                        <h4 class="font-bold text-gray-900 mb-3 flex items-center gap-2"><i data-lucide="globe" class="w-5 h-5 text-blue-600"></i>项目宣传官网</h4>
+                        <p class="text-sm text-gray-500 mb-4">GitHub Pages稳定部署，展示技术原理、核心优势、实测数据与团队信息，支持在线识别演示与合作对接</p>
+                        <div class="rounded-xl overflow-hidden shadow-md border border-gray-100 max-w-sm mx-auto">
+                            <img src="assets/website-shot.png" alt="智农激光项目官网界面" class="w-full h-auto">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ===== 技术方案 ===== -->
+    <section id="technology" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="scroll-reveal text-center mb-12">
+                <span class="inline-block px-4 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium mb-4">完整闭环</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900">技术实现方案</h2>
+                <p class="text-gray-600">从田间感知到精准除草的完整闭环</p>
+            </div>
+            <div class="grid md:grid-cols-4 gap-6 mb-16">
+                <div class="glass-card p-6 text-center"><i data-lucide="camera" class="w-10 h-10 text-green-600 mx-auto mb-3"></i><h4 class="font-bold">多源数据采集</h4><p class="text-sm">RGB-D + 多光谱 + 激光雷达</p></div>
+                <div class="glass-card p-6 text-center"><i data-lucide="brain-circuit" class="w-10 h-10 text-blue-600 mx-auto mb-3"></i><h4 class="font-bold">智能识别决策</h4><p class="text-sm">贝叶斯优化YOLOv8检测生长点</p></div>
+                <div class="glass-card p-6 text-center"><i data-lucide="crosshair" class="w-10 h-10 text-purple-600 mx-auto mb-3"></i><h4 class="font-bold">精准瞄准打击</h4><p class="text-sm">同轴视觉引导 / 动态功率调节</p></div>
+                <div class="glass-card p-6 text-center"><i data-lucide="rotate-ccw" class="w-10 h-10 text-orange-600 mx-auto mb-3"></i><h4 class="font-bold">效果反馈优化</h4><p class="text-sm">视觉复查 + 云端增量学习</p></div>
+            </div>
+
+            <!-- 算法与数据 -->
+            <div class="scroll-reveal mb-16">
+                <div class="glass-card rounded-3xl p-8 md:p-10">
+                    <div class="grid lg:grid-cols-2 gap-10 items-center">
+                        <div>
+                            <span class="inline-block px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium mb-4">数据与算法</span>
+                            <h3 class="text-2xl font-bold text-gray-900 mb-4">多场景数据采集与增广</h3>
+                            <p class="text-gray-600 text-sm leading-relaxed mb-4">按"光照条件（晴天强光、阴天弱光、晨露逆光、傍晚逆光）+ 土壤类型（壤土、黏土）"组合场景，以0.5m/s速度、2m间隔开展田间图像采集，同步记录光照强度、作物苗高、土壤类型等环境元数据；聚焦幼苗期（株高2—8cm）单株及集群状态杂草逐株采集。</p>
+                            <ul class="space-y-2 text-sm">
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-blue-500"></i>Mosaic拼接 + HSV扰动 + 随机矩形遮挡三重增强</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-blue-500"></i>RGB + 深度多源特征早期融合</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-5 h-5 text-blue-500"></i>11万真实样本等效66万训练效果</li>
+                            </ul>
+                        </div>
+                        <div class="rounded-2xl overflow-hidden shadow-lg border border-green-100">
+                            <img src="assets/dataset-preview.png" alt="多场景杂草数据集标注预览" class="w-full h-auto">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 识别结果 -->
+            <div class="scroll-reveal mb-16">
+                <div class="grid lg:grid-cols-2 gap-8">
+                    <div class="glass-card rounded-3xl p-8">
+                        <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><i data-lucide="eye" class="w-6 h-6 text-green-600"></i>生长点定位与识别效果</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed mb-4">多任务网络在检测头旁并行增加轻量化回归子网络，同步输出目标边界框、类别概率及生长点相对框中心的归一化偏移量，实现杂草检测 + 生长点坐标回归双任务并行输出。</p>
+                        <div class="rounded-xl overflow-hidden shadow-md border border-gray-100">
+                            <img src="assets/detect-result.png" alt="杂草识别与生长点定位结果" class="w-full h-auto">
+                        </div>
+                    </div>
+                    <div class="glass-card rounded-3xl p-8">
+                        <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><i data-lucide="ruler" class="w-6 h-6 text-blue-600"></i>执行机构精度保障</h3>
+                        <ul class="space-y-4">
+                            <li class="flex items-start gap-3"><i data-lucide="target" class="w-5 h-5 text-blue-600 mt-0.5 shrink-0"></i><div><p class="font-medium text-sm">高精度手眼标定</p><p class="text-sm text-gray-500">Tsai-Lenz两步法，重投影误差≤0.5像素，0.5m作业距离空间定位误差＜1.5mm</p></div></li>
+                            <li class="flex items-start gap-3"><i data-lucide="activity" class="w-5 h-5 text-blue-600 mt-0.5 shrink-0"></i><div><p class="font-medium text-sm">抗扰动动态跟踪</p><p class="text-sm text-gray-500">模型预测控制 + IMU补偿，激光脱靶率从15%降至1%以下，瞄准偏差从±5mm减小到±0.5mm</p></div></li>
+                            <li class="flex items-start gap-3"><i data-lucide="shield-check" class="w-5 h-5 text-blue-600 mt-0.5 shrink-0"></i><div><p class="font-medium text-sm">多重安全互锁</p><p class="text-sm text-gray-500">硬件电气互锁 + ROS2软件地理围栏，激光误启动概率为零，指令屏蔽响应＜50ms</p></div></li>
+                            <li class="flex items-start gap-3"><i data-lucide="cpu" class="w-5 h-5 text-blue-600 mt-0.5 shrink-0"></i><div><p class="font-medium text-sm">边缘端部署</p><p class="text-sm text-gray-500">结构化剪枝 + INT8量化 + TensorRT加速，模型体积压缩至3MB以下，Jetson Nano单帧推理≤40ms</p></div></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ===== 应用场景 ===== -->
+    <section id="scenarios" class="py-20 bg-gradient-to-b from-gray-50 to-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="scroll-reveal text-center mb-12">
+                <span class="inline-block px-4 py-1 rounded-full bg-emerald-100 text-emerald-800 text-sm font-medium mb-3">全场景覆盖</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">智慧农场 · 多作物高效适配</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">面向河南本地小麦、玉米、花生产区实际农情，覆盖大田、果园、设施农业多种种植场景</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="glass-card rounded-2xl p-6 text-center hover:shadow-xl transition">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-5"><i data-lucide="wheat" class="w-8 h-8 text-green-700"></i></div>
+                    <h3 class="text-xl font-bold">大田粮食作物</h3>
+                    <p class="text-gray-600 text-sm mt-2">玉米、小麦、花生规模化种植，适配"稀种"（行距25cm）与"稠种"（行距10—20cm）两种模式，可伸缩底盘兼容15—30cm行距，避免碾压作物。</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6 text-center hover:shadow-xl transition">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-orange-100 flex items-center justify-center mb-5"><i data-lucide="apple" class="w-8 h-8 text-orange-700"></i></div>
+                    <h3 class="text-xl font-bold">果园 / 经济林</h3>
+                    <p class="text-gray-600 text-sm mt-2">果园行间除草，激光定向清除不影响果树根系，杜绝除草剂漂移残留，提升果品安全等级。</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6 text-center hover:shadow-xl transition">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-blue-100 flex items-center justify-center mb-5"><i data-lucide="salad" class="w-8 h-8 text-blue-700"></i></div>
+                    <h3 class="text-xl font-bold">设施农业 / 有机农场</h3>
+                    <p class="text-gray-600 text-sm mt-2">温室大棚、高附加值有机蔬菜，完全零农药输出，无化学残留、无土壤板结，助力高端品牌溢价。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== 市场调研 ===== -->
+    <section id="research" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="scroll-reveal text-center mb-12">
+                <span class="inline-block px-4 py-1 rounded-full bg-yellow-100 text-yellow-800 text-sm font-medium mb-3">一线走访 · 数据支撑</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">实地市场调研</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">线上问卷 + 线下走访相结合，深入河南多地农村摸清真实农情与除草痛点</p>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8 mb-12">
+                <div class="glass-card rounded-2xl p-8 text-center">
+                    <div class="text-4xl font-bold text-green-700 mb-1">500</div>
+                    <div class="text-sm text-gray-600 mb-3">线上定向发放问卷（份）</div>
+                    <div class="text-lg font-bold text-gray-800">385</div>
+                    <div class="text-sm text-gray-500">有效回收问卷 · 有效回收率91.7%</div>
+                </div>
+                <div class="glass-card rounded-2xl p-8 text-center">
+                    <div class="text-4xl font-bold text-green-700 mb-1">3地</div>
+                    <div class="text-sm text-gray-600">线下实地走访区域</div>
+                    <div class="text-sm text-gray-500 mt-2">中牟县官渡镇 · 平顶山郏县薛店镇 · 宝丰刘庄</div>
+                </div>
+                <div class="glass-card rounded-2xl p-8 text-center">
+                    <div class="text-4xl font-bold text-green-700 mb-1">30%</div>
+                    <div class="text-sm text-gray-600">农忙期劳动力缺口</div>
+                    <div class="text-sm text-gray-500 mt-2">人工除草效率仅0.5—3亩/人/天</div>
+                </div>
+            </div>
+
+            <div class="scroll-reveal">
+                <div class="grid lg:grid-cols-2 gap-8 items-stretch">
+                    <div class="glass-card rounded-3xl p-8">
+                        <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><i data-lucide="search" class="w-6 h-6 text-green-600"></i>核心调研发现</h3>
+                        <ul class="space-y-4 text-sm">
+                            <li class="flex items-start gap-3"><span class="w-1.5 h-1.5 rounded-full bg-green-500 mt-2 shrink-0"></span><span class="text-gray-700"><strong>除草模式</strong>：郑州地区玉米、小麦、花生田普遍采用"化学除草为主、人工补除为辅"模式，化学除草易引发土壤板结、地力衰退及作物减产。</span></li>
+                            <li class="flex items-start gap-3"><span class="w-1.5 h-1.5 rounded-full bg-green-500 mt-2 shrink-0"></span><span class="text-gray-700"><strong>隐性减收</strong>：化学除草每亩单次成本仅20—30元，但连续使用3年以上，土壤板结导致小麦、玉米亩产下降8%—12%，部分地块出现除草剂残留引发的出苗不齐。</span></li>
+                            <li class="flex items-start gap-3"><span class="w-1.5 h-1.5 rounded-full bg-green-500 mt-2 shrink-0"></span><span class="text-gray-700"><strong>种植模式</strong>：本地小麦、玉米分"稀种"（行距25cm左右）与"稠种"（行距10—20cm左右）两种模式，对底盘宽度提出差异化要求。</span></li>
+                            <li class="flex items-start gap-3"><span class="w-1.5 h-1.5 rounded-full bg-green-500 mt-2 shrink-0"></span><span class="text-gray-700"><strong>设计优化</strong>：据此将设备宽度预设计改为可伸缩底盘，兼容15—30cm行距；采用窄轮距橡胶轮方案控制成本，无需履带式设计。</span></li>
+                        </ul>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="rounded-2xl overflow-hidden shadow-lg border border-gray-100">
+                            <img src="assets/field-research.png" alt="团队在田间开展调研" class="w-full h-40 object-cover">
+                            <p class="text-xs text-gray-500 text-center py-2 bg-gray-50">中牟县官渡镇走访调研</p>
+                        </div>
+                        <div class="rounded-2xl overflow-hidden shadow-lg border border-gray-100">
+                            <img src="assets/field-talk.png" alt="与农户在田间交流" class="w-full h-40 object-cover">
+                            <p class="text-xs text-gray-500 text-center py-2 bg-gray-50">宝丰刘庄与农户交流</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- ===== 效益对比 ===== -->
+    <section id="benchmark" class="py-20 bg-gradient-to-b from-slate-50 to-green-50/30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="scroll-reveal text-center mb-12">
+                <span class="inline-block px-4 py-1 rounded-full bg-indigo-100 text-indigo-800 text-sm font-medium mb-3">对标全球 · 本土破局</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">主流激光除草装备对比</h2>
+                <p class="text-gray-600">对标国内外主流产品，找准本项目"高精度识别、动态化适配、低成本落地"的技术突破口</p>
+            </div>
+
+            <div class="overflow-x-auto shadow-lg rounded-2xl bg-white mb-12">
+                <table class="min-w-full text-sm text-left table-fixed" style="min-width:720px">
+                    <colgroup>
+                        <col style="width:18%"><col style="width:28%"><col style="width:27%"><col style="width:27%">
+                    </colgroup>
+                    <thead class="bg-green-800 text-white text-base">
+                        <tr>
+                            <th class="px-6 py-4">产品</th>
+                            <th class="px-6 py-4">核心性能</th>
+                            <th class="px-6 py-4">适用场景</th>
+                            <th class="px-6 py-4 bg-green-700">局限 / 痛点</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <tr class="hover:bg-gray-50"><td class="px-6 py-4 font-medium">美国 Carbon Robotics<br>LaserWeeder G2</td><td class="px-6 py-4">亚毫米级识别；24台激光器+24块GPU；60万株/小时；误伤率≤1%</td><td class="px-6 py-4">欧美平原规模化农场；宽垄作物、有机农业</td><td class="px-6 py-4">单价超1000万；仅适配≤10°缓坡；干旱易起火；0℃以下停机</td></tr>
+                        <tr class="hover:bg-gray-50"><td class="px-6 py-4 font-medium">美国 John Deere<br>R4030</td><td class="px-6 py-4">See Spray AI识别（≥95%）；0.4hm²/h；激光/喷雾双模；厘米级定位</td><td class="px-6 py-4">全球连片大田；规模化农场；≤5°缓坡</td><td class="px-6 py-4">激光为选配；仍依赖除草剂；雨天不适配；配套成本超10万美元</td></tr>
+                        <tr class="hover:bg-gray-50"><td class="px-6 py-4 font-medium">中国华工激光<br>Laser Weeder A4</td><td class="px-6 py-4">AI视觉10毫秒识别（≥99.5%）；4台CO₂激光器；4万株/小时；净除率≥95%</td><td class="px-6 py-4">百亩地块、大棚；中小农户作业</td><td class="px-6 py-4">单日12—15亩；强光识别略降；依赖充电；维护成本高</td></tr>
+                        <tr class="hover:bg-gray-50"><td class="px-6 py-4 font-medium">中国华工智耘<br>"神农"系列</td><td class="px-6 py-4">5毫秒识别；32激光头（32万株/小时）；清除率≥95%；-20℃可作业</td><td class="px-6 py-4">千亩规模化基地；东北/西北产区；≤15°缓坡</td><td class="px-6 py-4">售价45—90万；需补能；多尘环境需频繁清洁传感器</td></tr>
+                        <tr class="hover:bg-gray-50"><td class="px-6 py-4 font-medium">中国极飞智能激光<br>除草机器人</td><td class="px-6 py-4">多光谱+激光雷达识别；灭杀率≥92%；0.4hm²/h；北斗厘米级定位</td><td class="px-6 py-4">国内连片大田；合作社；≤20°缓坡</td><td class="px-6 py-4">单价超60万；株间精度不足；售后响应长</td></tr>
+                        <tr class="hover:bg-gray-50"><td class="px-6 py-4 font-bold text-green-800">智农激光（本项目）</td><td class="px-6 py-4 bg-green-50 font-bold text-green-800">识别≥98.2%；响应≤10ms；动态功率调控；生长点毫米级定位</td><td class="px-6 py-4 bg-green-50">河南本土大田、大棚；中小农户；稀种/稠种双模式</td><td class="px-6 py-4 bg-green-50 font-bold">可伸缩底盘、本土化适配、低成本落地</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 传统模式对比 -->
+            <div class="scroll-reveal">
+                <h3 class="text-2xl font-bold text-gray-900 text-center mb-8">激光除草 vs 传统模式</h3>
+                <div class="overflow-x-auto shadow-lg rounded-2xl bg-white">
+                    <table class="min-w-full text-sm text-left table-fixed" style="min-width:720px">
+                        <colgroup>
+                            <col style="width:20%"><col style="width:26%"><col style="width:27%"><col style="width:27%">
+                        </colgroup>
+                        <thead class="bg-green-800 text-white text-base"><tr><th class="px-6 py-4">对比维度</th><th class="px-6 py-4">人工除草</th><th class="px-6 py-4">化学除草剂</th><th class="px-6 py-4 bg-green-700">激光除草机器人</th></tr></thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr class="hover:bg-gray-50"><td class="px-6 py-4 font-medium">作业效率</td><td class="px-6 py-4">0.5—3亩/人/天</td><td class="px-6 py-4">较高，但有残留风险</td><td class="px-6 py-4 bg-green-50 font-bold text-green-800">无人化自主作业</td></tr>
+                            <tr class="hover:bg-gray-50"><td class="px-6 py-4">单次成本</td><td class="px-6 py-4">人工成本随劳动力上涨</td><td class="px-6 py-4">每亩20—30元（含隐性减收）</td><td class="px-6 py-4 bg-green-50 font-bold">一次投入、长期分摊</td></tr>
+                            <tr class="hover:bg-gray-50"><td class="px-6 py-4">土壤影响</td><td class="px-6 py-4">基本无影响</td><td class="px-6 py-4">板结、酸化、地力衰退，亩产降8%—12%</td><td class="px-6 py-4 bg-green-50 font-bold">零残留 · 保护土壤微生态</td></tr>
+                            <tr class="hover:bg-gray-50"><td class="px-6 py-4">作物安全</td><td class="px-6 py-4">较高（人为误伤）</td><td class="px-6 py-4">漂移伤苗、出苗不齐</td><td class="px-6 py-4 bg-green-50 font-bold">毫米级精度，误伤率＜1%</td></tr>
+                            <tr class="hover:bg-gray-50"><td class="px-6 py-4">智能化程度</td><td class="px-6 py-4">人工决策</td><td class="px-6 py-4">粗放喷洒</td><td class="px-6 py-4 bg-green-50 font-bold">AI识别+云端调控自主作业</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== 项目团队 ===== -->
+    <section id="team" class="py-20 bg-gradient-to-b from-green-50/30 to-white">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="scroll-reveal text-center mb-12">
+                <span class="inline-block px-4 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium mb-4">跨学科协作</span>
+                <h2 class="text-3xl font-bold text-gray-900">项目团队</h2>
+                <p class="text-gray-600">8人跨专业协作，覆盖软件、机械、硬件、算法、运营全流程</p>
+            </div>
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="glass-card p-6 rounded-2xl"><div class="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-600 mb-4">韩</div><h4 class="font-bold">韩鹏兰</h4><p class="text-sm text-gray-500">项目负责人 / 软件工程</p><div class="mt-2 text-xs text-gray-400">项目规划组织、算法落地、系统集成</div></div>
+                <div class="glass-card p-6 rounded-2xl"><div class="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center text-xl font-bold text-orange-600 mb-4">王</div><h4 class="font-bold">王城垅</h4><p class="text-sm text-gray-500">嵌入式控制 / ACM获奖</p><div class="mt-2 text-xs text-gray-400">机器人控制程序与软件系统开发</div></div>
+                <div class="glass-card p-6 rounded-2xl"><div class="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center text-xl font-bold text-green-600 mb-4">刘</div><h4 class="font-bold">刘顺祥</h4><p class="text-sm text-gray-500">机械设计 / CAD、SolidWorks</p><div class="mt-2 text-xs text-gray-400">机械结构设计与硬件组装</div></div>
+                <div class="glass-card p-6 rounded-2xl"><div class="w-14 h-14 rounded-full bg-purple-100 flex items-center justify-center text-xl font-bold text-purple-600 mb-4">李</div><h4 class="font-bold">李佳航</h4><p class="text-sm text-gray-500">算法 / 集成电路专业</p><div class="mt-2 text-xs text-gray-400">YOLOv8模型搭建与调试</div></div>
+                <div class="glass-card p-6 rounded-2xl"><div class="w-14 h-14 rounded-full bg-yellow-100 flex items-center justify-center text-xl font-bold text-yellow-600 mb-4">贾</div><h4 class="font-bold">贾艺文</h4><p class="text-sm text-gray-500">运营 / 跨境电商</p><div class="mt-2 text-xs text-gray-400">资金管理、资源整合、落地推广</div></div>
+                <div class="glass-card p-6 rounded-2xl"><div class="w-14 h-14 rounded-full bg-teal-100 flex items-center justify-center text-xl font-bold text-teal-600 mb-4">樊</div><h4 class="font-bold">樊荣鑫</h4><p class="text-sm text-gray-500">硬件 / 电气工程</p><div class="mt-2 text-xs text-gray-400">电路设计、嵌入式系统、模型优化</div></div>
+                <div class="glass-card p-6 rounded-2xl"><div class="w-14 h-14 rounded-full bg-pink-100 flex items-center justify-center text-xl font-bold text-pink-600 mb-4">胡</div><h4 class="font-bold">胡世康</h4><p class="text-sm text-gray-500">测试 / 食品质量安全</p><div class="mt-2 text-xs text-gray-400">模型量化、成果测试与反馈收集</div></div>
+                <div class="glass-card p-6 rounded-2xl"><div class="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center text-xl font-bold text-indigo-600 mb-4">张</div><h4 class="font-bold">张文博</h4><p class="text-sm text-gray-500">数据 / 机械设计</p><div class="mt-2 text-xs text-gray-400">图像数据采集与整理</div></div>
+            </div>
+            <div class="mt-10 text-center">
+                <p class="text-sm text-gray-500">指导教师：<span class="font-medium text-gray-700">卫艺冉</span>（郑州科技学院创新创业学院）· 参与省市级课题4项，发表论文6篇，授权专利2项，获"优秀创新创业导师"称号</p>
+            </div>
+        </div>
+    </section>
+    <!-- ===== 合作联系 ===== -->
+    <section id="contact" class="py-20 bg-gradient-to-b from-white to-gray-50/40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="scroll-reveal text-center mb-12">
+                <span class="inline-block px-4 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mb-3">携手共进</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900">合作联系 · 共创智慧农业新生态</h2>
+                <p class="text-gray-500">期待与农场、合作社、投资机构及技术伙伴深度合作</p>
+            </div>
+            <div class="grid lg:grid-cols-2 gap-10 items-start">
+                <div class="glass-card rounded-3xl p-8 md:p-10 bg-white/90 shadow-xl">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center"><i data-lucide="bot" class="w-6 h-6 text-white"></i></div>
+                        <div><h3 class="text-2xl font-bold">智农激光团队</h3><p class="text-sm text-green-700">智能装备 · 精准农业解决方案</p></div>
+                    </div>
+                    <div class="space-y-5">
+                        <div class="flex gap-3"><i data-lucide="building-2" class="w-5 h-5 text-green-600"></i><div><p class="font-medium">网站创建 / 联系人</p><p class="text-gray-500 text-sm">19937782134 王城垅</p></div></div>
+                        <div class="flex gap-3"><i data-lucide="phone" class="w-5 h-5 text-green-600"></i><div><p class="font-medium">商务合作专线</p><p class="text-gray-500">18739832936（韩女士）</p></div></div>
+                        <div class="flex gap-3"><i data-lucide="mail" class="w-5 h-5 text-green-600"></i><div><p class="font-medium">官方邮箱</p><p class="text-gray-500">2838078817@qq.com</p></div></div>
+                        <div class="flex gap-3"><i data-lucide="map-pin" class="w-5 h-5 text-green-600"></i><div><p class="font-medium">地址</p><p class="text-gray-500 text-sm">郑州市二七区郑州科技学院 / 郑州科技学院创新创业学院4A04</p></div></div>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-gray-100 text-sm text-gray-500">服务响应：工作日9:00—18:00，收到留言后12小时内回复</div>
+                </div>
+                <div class="glass-card rounded-3xl p-8 md:p-10 bg-white shadow-xl">
+                    <h3 class="text-2xl font-bold mb-2 flex gap-2"><i data-lucide="mail-check" class="text-green-600"></i> 快捷咨询通道</h3>
+                    <p class="text-gray-500 text-sm mb-6">留下您的信息，我们将提供专业方案与产品资料。</p>
+                    <form id="contact-form" class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">您的姓名 *</label>
+                            <input type="text" name="name" required class="form-input-custom w-full px-5 py-3 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-green-300 transition" placeholder="例如：王经理">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">联系电话 *</label>
+                            <input type="tel" name="phone" required class="form-input-custom w-full px-5 py-3 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-green-300" placeholder="手机 / 固话">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">单位 / 公司</label>
+                            <input type="text" name="company" class="form-input-custom w-full px-5 py-3 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-green-300" placeholder="选填，例如：某合作社">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">留言内容 *</label>
+                            <textarea name="content" rows="4" required class="form-input-custom w-full px-5 py-3 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-green-300" placeholder="感兴趣的合作方向、种植面积或咨询需求..."></textarea>
+                        </div>
+                        <button type="submit" class="w-full btn-primary text-white font-semibold py-3.5 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2" id="submit-btn">
+                            <i data-lucide="send" class="w-5 h-5"></i> 提交合作意向
+                        </button>
+                        <p class="text-xs text-gray-400 text-center" id="form-tip"></p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="py-12 bg-gray-900 text-white">
+        <div class="max-w-7xl mx-auto px-4 grid md:grid-cols-3 gap-8">
+            <div>
+                <div class="flex items-center gap-2 mb-4"><div class="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center"><i data-lucide="sprout" class="text-white"></i></div><span class="font-bold text-xl">智农激光</span></div>
+                <p class="text-sm text-gray-400">基于贝叶斯优化的多模态感知与动态能量调控的智能激光除草机器人</p>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4">联系信息</h4>
+                <ul class="space-y-2 text-sm text-gray-400">
+                    <li class="flex gap-2"><i data-lucide="user"></i>韩鹏兰（软件工程）</li>
+                    <li><i data-lucide="mail"></i> 2838078817@qq.com</li>
+                    <li><i data-lucide="phone"></i> 18739832936</li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4">项目信息</h4>
+                <ul class="space-y-2 text-sm text-gray-400">
+                    <li>项目编号：202612746029</li>
+                    <li>指导教师：卫艺冉</li>
+                    <li>郑州科技学院创新创业学院</li>
+                </ul>
+            </div>
+        </div>
+        <div class="text-center text-sm text-gray-500 pt-8 border-t border-gray-800 mt-8">© 2026 智农激光项目组 | 河南省大学生创新训练项目</div>
+    </footer>
+
+    <!-- 提交反馈提示 -->
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-full shadow-xl text-white text-sm font-medium opacity-0 pointer-events-none transition-opacity duration-300 bg-gray-900"></div>
+
+    <script>
+        lucide.createIcons();
+        window.addEventListener('scroll', () => { const navbar = document.getElementById('navbar'); if (window.scrollY > 60) navbar.classList.add('shadow-md', 'bg-white/95'); else navbar.classList.remove('shadow-md', 'bg-white/95'); });
+        function toggleMobileMenu() { document.getElementById('mobile-menu').classList.toggle('hidden'); }
+        const observer = new IntersectionObserver((entries) => { entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('active'); }); }, { threshold: 0.12 });
+        document.querySelectorAll('.scroll-reveal').forEach(el => observer.observe(el));
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => { anchor.addEventListener('click', function(e) { e.preventDefault(); const target = document.querySelector(this.getAttribute('href')); if(target) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); document.getElementById('mobile-menu')?.classList.add('hidden'); } }); });
+
+        // 表单提交 -> /api/submit（保留submit功能）
+        const toast = document.getElementById('toast');
+        let toastTimer = null;
+        function showToast(msg, ok) {
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.style.background = ok ? '#1e8449' : '#c0392b';
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 4000);
+        }
+        const form = document.getElementById('contact-form');
+        const btn = document.getElementById('submit-btn');
+        const tip = document.getElementById('form-tip');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = form.name.value.trim();
+            const phone = form.phone.value.trim();
+            const company = form.company.value.trim();
+            const content = form.content.value.trim();
+            if (!name || !phone || !content) { showToast('请填写姓名、联系电话和留言内容', false); return; }
+            btn.disabled = true;
+            btn.querySelector('i').classList.add('animate-spin');
+            try {
+                const res = await fetch('/api/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, phone, company, content })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast('提交成功，我们将在12小时内与您联系', true);
+                    form.reset();
+                } else {
+                    showToast('提交失败：' + (data.error || '请稍后重试'), false);
+                }
+            } catch (err) {
+                showToast('提交失败，请检查网络或稍后重试', false);
+            } finally {
+                btn.disabled = false;
+                btn.querySelector('i').classList.remove('animate-spin');
+            }
+        });
+    </script>
+</body>
+</html>
